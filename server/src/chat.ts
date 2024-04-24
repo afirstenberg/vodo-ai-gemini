@@ -2,8 +2,18 @@ import {ChatGoogle} from "@langchain/google-gauth";
 import {getValueTool, putValueTool} from "./tools";
 import {ChatPromptTemplate} from "@langchain/core/prompts";
 import {AgentExecutor, createToolCallingAgent} from "langchain/agents";
+import {RunnableWithMessageHistory} from "@langchain/core/runnables";
+import {ChatMessageHistory} from "@langchain/community/stores/message/in_memory";
 
-async function chat() {
+let history = new ChatMessageHistory();
+
+async function getMessageHistory(...args: Array<any>): Promise<ChatMessageHistory> {
+  console.log('getMessageHistory', args);
+  return history;
+}
+
+async function chat( sessionId: string, input: string ) {
+
   const llm = new ChatGoogle({
     modelName: "gemini-1.0-pro-001",
   });
@@ -29,11 +39,35 @@ async function chat() {
     tools,
   });
 
-  const result = await agentExecutor.invoke({
-    input: "Set alpha to the same value that bravo has and tell me the old and new value for alpha.",
+  const agentWithHistory = new RunnableWithMessageHistory({
+    runnable: agentExecutor,
+    getMessageHistory,
+    inputMessagesKey: "input",
+    historyMessagesKey: "chat_history",
+  })
+
+  const result = await agentWithHistory.invoke({
+    input,
+  },{
+    configurable: {
+      sessionId
+    }
   });
 
-  console.log(result);
+  return result;
 }
 
-chat().then();
+chat(
+  "dummy",
+  "Set alpha to the same value that bravo has and tell me the old and new value for alpha.",
+).then( result => {
+  history = new ChatMessageHistory(result.chat_history);
+  console.log(result);
+
+  return chat(
+    "dummy",
+    "Now set it to three."
+  );
+}).then( result => {
+  console.log(result);
+});

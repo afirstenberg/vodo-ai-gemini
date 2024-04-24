@@ -1,8 +1,10 @@
 {
   "dependencies": {
+    "@langchain/community": "^0.0.51",
     "@langchain/core": "^0.1.58",
     "@langchain/google-common": "^0.0.11",
-    "@langchain/google-gauth": "^0.0.11"
+    "@langchain/google-gauth": "^0.0.11",
+    "langchain": "^0.1.35"
   },
   "module": "es2022"
 }

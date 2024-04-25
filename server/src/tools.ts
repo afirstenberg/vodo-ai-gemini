@@ -17,7 +17,7 @@ export class MyTool extends DynamicStructuredTool {
       schema: input.schema,
       func: async (i) => {
         const result = await input.func(i);
-        console.log("input/result", i, result);
+        // console.log(`function ${input.name}: ${i} -> ${result}`);
         return JSON.stringify(result);
       }
     });

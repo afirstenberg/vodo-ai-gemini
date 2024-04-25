@@ -4,6 +4,7 @@ import {ChatPromptTemplate} from "@langchain/core/prompts";
 import {AgentExecutor, createToolCallingAgent} from "langchain/agents";
 import {RunnableWithMessageHistory} from "@langchain/core/runnables";
 import {ChatMessageHistory} from "@langchain/community/stores/message/in_memory";
+import {ChainValues} from "@langchain/core/dist/utils/types";
 
 export type ChatSessionInput = {
   sessionId?: string;
@@ -32,17 +33,26 @@ export class ChatSession {
     return this.history;
   }
 
-  async msg( input: string ): Promise<string> {
+  async invokeWithModel( input: string, modelName: string ): Promise<ChainValues> {
 
     const llm = new ChatGoogle({
-      modelName: "gemini-1.0-pro-001",
+      modelName,
+      temperature: 0.1,
     });
     const tools = [
       getValueTool,
       putValueTool,
     ];
+    const systemPrompt = `
+      You are a helpful assistant that knows how to use tools.
+      Your responses should be suitable for reading over the phone. 
+      It is very important to use tools to answer the question or follow the instructions
+      rather than coming up with your own answer. Tool calls are good.
+      If there is a vague reference to a name, consider the last name mentioned,
+      but don't forget to use a tool to process it.
+    `;
     const prompt = ChatPromptTemplate.fromMessages([
-      ["system", "You are a helpful assistant that knows how to use tools."],
+      ["system", systemPrompt],
       ["placeholder", "{chat_history}"],
       ["human", "{input}"],
       ["placeholder", "{agent_scratchpad}"],
@@ -57,6 +67,7 @@ export class ChatSession {
     const agentExecutor = new AgentExecutor({
       agent,
       tools,
+      returnIntermediateSteps: true,
     });
 
     const agentWithHistory = new RunnableWithMessageHistory({
@@ -74,10 +85,21 @@ export class ChatSession {
       }
     });
 
-    // Save the message history, but we don't need to wait for it to save
-    this.setMessageHistory( new ChatMessageHistory(result.chat_history) ).then();
+    await this.setMessageHistory( new ChatMessageHistory(result.chat_history) );
+    return result;
 
+  }
+
+  async msg( input: string ): Promise<string> {
+    let result = await this.invokeWithModel( input, "gemini-1.0-pro-001" );
+    let co = 3;
+    while( !result.intermediateSteps?.length && co-- ){
+      console.log(`Trying again: ${result.output}`);
+      // result = await this.invokeWithModel( input, "gemini-1.5-pro-preview-0409" );
+      result = await this.invokeWithModel( `I don't think you used a tool. Please try again. ${input}`, "gemini-1.0-pro-001" );
+    }
     return result.output;
+
   }
 }
 
@@ -85,8 +107,12 @@ async function run(): Promise<void> {
   const session = new ChatSession();
 
   const messages = [
+    "Set bravo to 9",
     "Set alpha to the same value that bravo has and tell me the old and new value for alpha.",
-    "Now set it to three.",
+    "Now set it to 3.",
+    "Set charlie to 5",
+    "Change it to 4 instead.",
+    "What are all the values that we have set?",
   ];
 
   for( let co=0; co<messages.length; co++  ){

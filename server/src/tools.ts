@@ -17,18 +17,21 @@ export class MyTool extends DynamicStructuredTool {
       schema: input.schema,
       func: async (i) => {
         const result = await input.func(i);
-        // console.log(`function ${input.name}: ${i} -> ${result}`);
-        return JSON.stringify(result);
+        const ret = JSON.stringify(result);
+        console.log(`function ${input.name}: ${JSON.stringify(i)} -> ${ret}`);
+        return ret;
       }
     });
   }
 }
 
+const mem: Record<string,any> = {};
+
 type getValueType = {
   name: string;
 }
 async function getValue({name}: getValueType): Promise<string> {
-  return `${name}-${name}`;
+  return mem[name] ?? "";
 }
 export const getValueTool = new MyTool({
   name: "getValue",
@@ -43,18 +46,16 @@ type putValueType = {
   name: string;
   value: string;
 }
-async function putValue({name, value}: putValueType): Promise<putValueType> {
-  return {
-    name,
-    value,
-  }
+async function putValue({name, value}: putValueType): Promise<Record<string,any>> {
+  mem[name] = value;
+  return mem;
 }
 export const putValueTool = new MyTool({
   name: "putValue",
-  description: "Given a name and a new value, set the value as assigned to that name. This returns the full environment with this value set. It is good for both setting values and testing out what-if scenarios.",
+  description: "Given a name and a new value, set or change the value as assigned to that name. This returns the full environment with this value set. It is good for both setting values and testing out what-if scenarios.",
   schema: z.object({
     name: z.string().describe("The key whose value is being set"),
-    value: z.string().describe(""),
+    value: z.string().describe("The new value to set"),
   }),
   func: putValue,
 })

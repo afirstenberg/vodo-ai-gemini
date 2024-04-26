@@ -1,10 +1,10 @@
 import {ChatGoogle} from "@langchain/google-gauth";
-import {MemTool} from "./tools";
 import {ChatPromptTemplate} from "@langchain/core/prompts";
 import {AgentExecutor, createToolCallingAgent} from "langchain/agents";
 import {RunnableWithMessageHistory} from "@langchain/core/runnables";
 import {ChatMessageHistory} from "@langchain/community/stores/message/in_memory";
 import {ChainValues} from "@langchain/core/dist/utils/types";
+import {MemTool} from "./memTool";
 
 export type ChatSessionInput = {
   sessionId?: string;

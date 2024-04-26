@@ -25,37 +25,49 @@ export class MyTool extends DynamicStructuredTool {
   }
 }
 
-const mem: Record<string,any> = {};
-
 type getValueType = {
   name: string;
 }
-async function getValue({name}: getValueType): Promise<string> {
-  return mem[name] ?? "";
-}
-export const getValueTool = new MyTool({
-  name: "getValue",
-  description: "Given a name, look up or get the value assigned to that name",
-  schema: z.object({
-    name: z.string().describe("The key that references the value.")
-  }),
-  func: getValue,
-});
 
 type putValueType = {
   name: string;
   value: string;
 }
-async function putValue({name, value}: putValueType): Promise<Record<string,any>> {
-  mem[name] = value;
-  return mem;
+
+export class MemTool {
+
+  mem: Record<string,any> = {};
+
+  async getValue({name}: getValueType): Promise<string> {
+    return this.mem[name] ?? "";
+  }
+  getValueTool = new MyTool({
+    name: "getValue",
+    description: "Given a name, look up or get the value assigned to that name",
+    schema: z.object({
+      name: z.string().describe("The key that references the value.")
+    }),
+    func: async (params: getValueType) => this.getValue(params),
+  });
+
+  async putValue({name, value}: putValueType): Promise<Record<string,any>> {
+    this.mem[name] = value;
+    return this.mem;
+  }
+  putValueTool = new MyTool({
+    name: "putValue",
+    description: "Given a name and a new value, set or change the value as assigned to that name. This returns the full environment with this value set. It is good for both setting values and testing out what-if scenarios.",
+    schema: z.object({
+      name: z.string().describe("The key whose value is being set"),
+      value: z.string().describe("The new value to set"),
+    }),
+    func: async (params: putValueType) => this.putValue(params),
+  });
+
+  getTools(): MyTool[] {
+    return [
+      this.getValueTool,
+      this.putValueTool,
+    ]
+  }
 }
-export const putValueTool = new MyTool({
-  name: "putValue",
-  description: "Given a name and a new value, set or change the value as assigned to that name. This returns the full environment with this value set. It is good for both setting values and testing out what-if scenarios.",
-  schema: z.object({
-    name: z.string().describe("The key whose value is being set"),
-    value: z.string().describe("The new value to set"),
-  }),
-  func: putValue,
-})

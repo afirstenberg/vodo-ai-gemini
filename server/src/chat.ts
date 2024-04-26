@@ -1,5 +1,5 @@
 import {ChatGoogle} from "@langchain/google-gauth";
-import {getValueTool, putValueTool} from "./tools";
+import {MemTool} from "./tools";
 import {ChatPromptTemplate} from "@langchain/core/prompts";
 import {AgentExecutor, createToolCallingAgent} from "langchain/agents";
 import {RunnableWithMessageHistory} from "@langchain/core/runnables";
@@ -15,6 +15,8 @@ export class ChatSession {
   sessionId: string;
 
   history: ChatMessageHistory =  new ChatMessageHistory();
+
+  mem: MemTool = new MemTool();
 
   constructor(params?: ChatSessionInput){
     this.sessionId = params?.sessionId ?? this.newSession();
@@ -40,8 +42,7 @@ export class ChatSession {
       temperature: 0.1,
     });
     const tools = [
-      getValueTool,
-      putValueTool,
+      ...this.mem.getTools(),
     ];
     const systemPrompt = `
       You are a helpful assistant that knows how to use tools.

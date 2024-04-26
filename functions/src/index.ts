@@ -10,10 +10,13 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
+import {run} from "./chat";
+
 // Start writing functions
 // https://firebase.google.com/docs/functions/typescript
 
-export const helloWorld = onRequest((request, response) => {
+export const helloWorld = onRequest(async (request, response) => {
   logger.info("Hello logs!", {structuredData: true});
+  await run();
   response.send("Hello there!");
 });

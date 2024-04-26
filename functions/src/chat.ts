@@ -110,21 +110,21 @@ export class ChatSession {
   }
 }
 
-async function run(): Promise<void> {
+export async function run(): Promise<void> {
   const session = new ChatSession();
 
-  const messagesMem = [
-    "Set bravo to 9",
-    "Set alpha to the same value that bravo has and tell me the old and new value for alpha.",
-    "Now set it to 3.",
-    "Set charlie to 5",
-    "Change it to 4 instead.",
-    "What are all the values that we have set?",
-  ];
+  // const messagesMem = [
+  //   "Set bravo to 9",
+  //   "Set alpha to the same value that bravo has and tell me the old and new value for alpha.",
+  //   "Now set it to 3.",
+  //   "Set charlie to 5",
+  //   "Change it to 4 instead.",
+  //   "What are all the values that we have set?",
+  // ];
 
   const messagesDrive = [
-    // "Record how tall I am",
-    "Record how much I weigh"
+    "Record how tall I am",
+    // "Record how much I weigh"
   ]
 
   const messages = [

@@ -5,29 +5,33 @@ import {RunnableWithMessageHistory} from "@langchain/core/runnables";
 import {ChatMessageHistory} from "@langchain/community/stores/message/in_memory";
 import {ChainValues} from "@langchain/core/dist/utils/types";
 import {MemTool} from "./memTool";
-import {AbstractDriveTool, MockDriveTool} from "./driveTool";
+import {AbstractDriveTool} from "./driveTool";
 import * as logger from "firebase-functions/logger";
 
 export type ChatSessionInput = {
-  sessionId?: string;
+  sessionId: string;
+
+  history?: ChatMessageHistory;
+
+  mem?: MemTool;
+
+  drive: AbstractDriveTool;
 };
 
 export class ChatSession {
 
   sessionId: string;
 
-  history: ChatMessageHistory =  new ChatMessageHistory();
+  history: ChatMessageHistory;
 
   mem: MemTool = new MemTool();
 
-  drive: AbstractDriveTool = new MockDriveTool();
+  drive: AbstractDriveTool;
 
-  constructor(params?: ChatSessionInput){
-    this.sessionId = params?.sessionId ?? this.newSession();
-  }
-
-  newSession(): string {
-    return `${Date.now()}`;
+  constructor(params: ChatSessionInput){
+    this.sessionId = params.sessionId;
+    this.drive = params.drive;
+    this.history = params.history || new ChatMessageHistory();
   }
 
   async getMessageHistory(...args: Array<any>): Promise<ChatMessageHistory> {
@@ -110,32 +114,32 @@ export class ChatSession {
   }
 }
 
-export async function run(): Promise<void> {
-  const session = new ChatSession();
-
-  // const messagesMem = [
-  //   "Set bravo to 9",
-  //   "Set alpha to the same value that bravo has and tell me the old and new value for alpha.",
-  //   "Now set it to 3.",
-  //   "Set charlie to 5",
-  //   "Change it to 4 instead.",
-  //   "What are all the values that we have set?",
-  // ];
-
-  const messagesDrive = [
-    "Record how tall I am",
-    // "Record how much I weigh"
-  ]
-
-  const messages = [
-    ...messagesDrive,
-  ]
-
-  for( let co=0; co<messages.length; co++  ){
-    const input = messages[co];
-    logger.info( `you: ${input}`);
-    const reply = await session.msg( input );
-    logger.info( `bot: ${reply}` );
-  }
-
-}
+// export async function run(): Promise<void> {
+//   const session = new ChatSession();
+//
+//   // const messagesMem = [
+//   //   "Set bravo to 9",
+//   //   "Set alpha to the same value that bravo has and tell me the old and new value for alpha.",
+//   //   "Now set it to 3.",
+//   //   "Set charlie to 5",
+//   //   "Change it to 4 instead.",
+//   //   "What are all the values that we have set?",
+//   // ];
+//
+//   const messagesDrive = [
+//     "Record how tall I am",
+//     // "Record how much I weigh"
+//   ]
+//
+//   const messages = [
+//     ...messagesDrive,
+//   ]
+//
+//   for( let co=0; co<messages.length; co++  ){
+//     const input = messages[co];
+//     logger.info( `you: ${input}`);
+//     const reply = await session.msg( input );
+//     logger.info( `bot: ${reply}` );
+//   }
+//
+// }

@@ -1,6 +1,9 @@
 import {z} from "zod";
 import {MyTool} from "./tools";
 
+export type DriveState = {
+}
+
 type DriveFileInfo = {
   id: string;
   name: string;
@@ -42,6 +45,10 @@ type OpenFileResult = {
 
 export abstract class AbstractDriveTool {
 
+  constructor(state: DriveState) {
+    // TODO: Implement state
+  }
+
   abstract getFiles(params: GetFilesParams): Promise<GetFilesResult>;
   getFilesDesc =
     `Get the files that are available, 
@@ -78,6 +85,10 @@ export abstract class AbstractDriveTool {
       this.getFilesTool,
       this.openFileTool,
     ]
+  }
+
+  async getDriveState(): Promise<DriveState> {
+    return {};
   }
 }
 

@@ -10,13 +10,22 @@
 import {onRequest} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
-import {run} from "./chat";
+import {MemorySession} from "./session";
 
-// Start writing functions
-// https://firebase.google.com/docs/functions/typescript
+const sessionManager = new MemorySession();
 
 export const helloWorld = onRequest(async (request, response) => {
   logger.info("Hello logs!", {structuredData: true});
-  await run();
   response.send("Hello there!");
 });
+
+export const msg = onRequest( async (request, response) => {
+  const sessionId = "TODO";
+  const msg = request.query.msg as string;
+  const session = await sessionManager.loadSession( sessionId );
+  const reply = await session.msg( msg );
+  await sessionManager.saveSession( session );
+  response
+    .set( "X-Session-Id", session.sessionId )
+    .send( reply );
+})

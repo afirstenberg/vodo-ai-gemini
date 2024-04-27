@@ -1,6 +1,6 @@
 import {ChatSession} from "./chat";
 import {ChatMessageHistory} from "@langchain/community/stores/message/in_memory";
-import {AbstractDriveTool, DriveState, MockDriveTool} from "./driveTool";
+import {AbstractDriveTool, DriveState, RemoteDriveTool} from "./driveTool";
 import {logger} from "firebase-functions";
 import {BaseMessage} from "@langchain/core/messages";
 
@@ -27,7 +27,7 @@ abstract class AbstractSession {
   }
 
   newDriveTool(state: DriveState): AbstractDriveTool {
-    return new MockDriveTool(state);
+    return new RemoteDriveTool(state);
   }
 }
 

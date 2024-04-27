@@ -1,5 +1,6 @@
 import {z} from "zod";
 import {MyTool} from "./tools";
+import {logger} from "firebase-functions";
 
 export type DriveState = {
 }
@@ -9,11 +10,11 @@ type DriveFileInfo = {
   name: string;
 }
 
-type SpreadsheetColumnType = "string" | "number" | "date";
+type SpreadsheetColumnType = "string" | "number" | "datetime" | "boolean";
 
 type SpreadsheetColumnInfo = {
-  columnId: string;
-  header: string;
+  columnId: string;      // headerCol
+  headerName: string;
   description?: string;
   isWriteable: boolean;
   type?: SpreadsheetColumnType;
@@ -21,7 +22,9 @@ type SpreadsheetColumnInfo = {
 
 type SpreadsheetInfo = {
   id: string;
-  sheetId: string;
+  name: string;         // spreadsheetName
+  description: string;
+  sheetId: string;      // sheetName
   column: SpreadsheetColumnInfo[];
   lastRow: number;
   currentRow: number;
@@ -112,29 +115,31 @@ export class MockDriveTool extends AbstractDriveTool {
 
   async openFile(params: OpenFileParams): Promise<OpenFileResult> {
     const values = params.id === 'mock-1'
-      ? {header: "weight"}
-      : {header: "height"};
+      ? {name: "weight", header: "weight"}
+      : {name: "height", header: "height"};
     const info: SpreadsheetInfo = {
       id: params.id,
+      name: values.name,
+      description: "You are working on a spreadsheet.",
       sheetId: "sheet1",
       lastRow: 5,
       currentRow: 5,
       column: [
         {
           columnId: "A",
-          header: "Date",
+          headerName: "Date",
           isWriteable: false,
-          type: "date",
+          type: "datetime",
         },
         {
           columnId: "B",
-          header: values.header,
+          headerName: values.header,
           isWriteable: true,
           type: "number",
         },
         {
           columnId: "C",
-          header: "change",
+          headerName: "change",
           isWriteable: false,
           type: "number",
         }
@@ -143,6 +148,34 @@ export class MockDriveTool extends AbstractDriveTool {
     return {
       info,
     }
+  }
+
+}
+
+export class RemoteDriveTool extends AbstractDriveTool {
+
+  get url(): string {
+    const ret = process.env.DRIVE_SERVER_URL || "missing_env_DRIVE_SERVER_URL";
+    logger.info( `RemoteDrive url=${ret}`, {url: ret} );
+    return ret;
+  }
+
+  async _exec( command: string, params: any = {} ): Promise<any> {
+    const url = `${this.url}?command=${command}`
+    const response = await fetch( url, {
+      method: "POST",
+      body: JSON.stringify(params),
+    });
+    const ret = await response.json();
+    return ret;
+  }
+
+  async getFiles(params: GetFilesParams): Promise<GetFilesResult> {
+    return this._exec( "list", params );
+  }
+
+  async openFile(params: OpenFileParams): Promise<OpenFileResult> {
+    return this._exec( "info", params );
   }
 
 }

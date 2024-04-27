@@ -6,6 +6,7 @@ import {ChatMessageHistory} from "@langchain/community/stores/message/in_memory"
 import {ChainValues} from "@langchain/core/dist/utils/types";
 import {MemTool} from "./memTool";
 import {AbstractDriveTool, MockDriveTool} from "./driveTool";
+import * as logger from "firebase-functions/logger";
 
 export type ChatSessionInput = {
   sessionId?: string;
@@ -82,7 +83,7 @@ export class ChatSession {
       historyMessagesKey: "chat_history",
     })
 
-    const result = await agentWithHistory.invoke({
+    const result= await agentWithHistory.invoke({
       input,
     },{
       configurable: {
@@ -97,11 +98,10 @@ export class ChatSession {
 
   async msg( input: string ): Promise<string> {
     let result = await this.invokeWithModel( input, "gemini-1.0-pro-001" );
-    console.log(result);
-    console.log(result.intermediateSteps);
+    logger.debug('msg result', result);
     let co = 3;
     while( !result.intermediateSteps?.length && co-- ){
-      console.log(`Trying again: ${result.output}`);
+      logger.info(`Trying again: ${result.output}`, result);
       // result = await this.invokeWithModel( input, "gemini-1.5-pro-preview-0409" );
       result = await this.invokeWithModel( `I don't think you used a tool. Please try again. ${input}`, "gemini-1.0-pro-001" );
     }
@@ -133,11 +133,9 @@ export async function run(): Promise<void> {
 
   for( let co=0; co<messages.length; co++  ){
     const input = messages[co];
-    console.log( `you: ${input}`);
+    logger.info( `you: ${input}`);
     const reply = await session.msg( input );
-    console.log( `bot: ${reply}` );
+    logger.info( `bot: ${reply}` );
   }
 
 }
-
-run().then();

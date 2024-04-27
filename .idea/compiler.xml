@@ -12,4 +12,7 @@
       <entry name="!?*.clj" />
     </wildcardResourcePatterns>
   </component>
+  <component name="TypeScriptCompiler">
+    <option name="nodeInterpreterTextField" value="$USER_HOME$/.nvm/versions/node/v20.2.0/bin/node" />
+  </component>
 </project>

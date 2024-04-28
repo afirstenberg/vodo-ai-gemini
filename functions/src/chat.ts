@@ -53,6 +53,9 @@ export class ChatSession {
       //...this.mem.getTools(),
       ...this.drive.getTools(),
     ];
+
+    const driveDescription = this.drive.currentFile?.description ?? "";
+
     const systemPrompt = `
       You are a helpful assistant that knows how to use tools.
       Your responses should be suitable for reading over the phone. 
@@ -60,6 +63,10 @@ export class ChatSession {
       rather than coming up with your own answer. Tool calls are good.
       If there is a vague reference to a name, consider the last name mentioned,
       but don't forget to use a tool to process it.
+      When sending a message to the user, you should refer to the spreadsheet
+      and columns in the spreadsheet by name or title. But when making tool calls,
+      you should use the appropriate id.
+      ${driveDescription}
     `;
     const prompt = ChatPromptTemplate.fromMessages([
       ["system", systemPrompt],

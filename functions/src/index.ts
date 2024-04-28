@@ -61,3 +61,13 @@ export const clientMsg = onCall( async (request) => {
   const result = await handleMsg( request.data );
   return result;
 })
+
+export const clientAudio = onCall( async (request) => {
+  const audio64 = request.data.audio64;
+
+  return {
+    sessionId: request.data.sessionId,
+    msg: `received ${audio64.length}`,
+    reply: "lorum ipsum",
+  }
+})

@@ -2,48 +2,104 @@ const recordButton = document.getElementById('recordButton');
 const textInput = document.getElementById('textInput');
 const chatArea = document.getElementById('chatArea');
 const typingIndicator = document.getElementById('typingIndicator');
-const apiUrl = 'YOUR_API_URL';
 
-// Recording logic (you'll need a library like Recorder.js or similar)
-recordButton.addEventListener('click', async () => {
-  // TODO - get audio
-  const audioData = "" /* ... */;
-
-  // Send audio to server and handle response
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    body: audioData
-  });
-  const text = await response.text();
-
-  // Display message in chat
-  displayMessage(text, 'server');
-});
+const recordQuestion = document.getElementById('recordQuestion');
+const recordBan = document.getElementById('recordBan');
 
 const sessionId = `web-${Date.now().valueOf()}-${Math.random()}`;
 
+let mediaRecorder;
+let recordedChunks = [];
+
+async function blobToBase64(blob) {
+  return new Promise((resolve, _) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const url = reader.result;
+      const comma = url.indexOf(',');
+      const b64 = url.substring(comma+1);
+      resolve(b64);
+    }
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function sendText(msg){
+  displayMessage(msg, 'user');
+
+  typingIndicator.style.display = null;
+  chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
+
+  const response = await firebase.functions().httpsCallable('clientMsg')({
+    sessionId,
+    msg,
+  })
+
+  typingIndicator.style.display = 'none';
+
+  const reply = response.data.reply;
+  displayMessage(reply, 'vodo');
+}
+
+async function sendAudio(audioBlob){
+  typingIndicator.style.display = null;
+  chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
+
+  const audio64 = await blobToBase64( audioBlob );
+  const response = await firebase.functions().httpsCallable('clientAudio')({
+    sessionId,
+    audio64,
+  })
+
+  console.log(response.data);
+
+  typingIndicator.style.display = 'none';
+
+  const msg = response.data.msg;
+  displayMessage(msg, 'user');
+
+  const reply = response.data.reply;
+  displayMessage(reply, 'vodo');
+}
+
+recordButton.addEventListener('click', async () => {
+  if (!mediaRecorder) {
+    // Start recording if not already recording
+    try{
+      recordQuestion.classList.remove('hide');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      recordQuestion.classList.add('hide');
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = event => recordedChunks.push(event.data);
+      mediaRecorder.onstop = async () => {
+        console.log('media on stop');
+        recordButton.classList.remove('recording');
+        const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
+        recordedChunks = []; // Reset chunks
+        await sendAudio(audioBlob);
+      };
+
+      mediaRecorder.start();
+      recordButton.classList.add('recording');
+
+    } catch( xx ){
+      recordQuestion.classList.add('hide');
+      recordBan.classList.remove('hide');
+      console.error('Error accessing microphone:', xx)
+    }
+
+  } else {
+    // Stop recording
+    mediaRecorder.stop();
+    mediaRecorder = null;
+  }
+})
+
 textInput.addEventListener('keydown', async (event) => {
   if (event.key === 'Enter' && textInput.value.trim() !== '') {
-    // Send text message to server and display it
-    displayMessage(textInput.value, 'user');
-
-    // Clear input field
     const msg = textInput.value;
     textInput.value = '';
-
-    typingIndicator.style.display = null;
-    chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
-
-    const response = await firebase.functions().httpsCallable('clientMsg')({
-      sessionId,
-      msg,
-    })
-
-    typingIndicator.style.display = 'none';
-
-    const reply = response.data.reply;
-    console.log(response);
-    displayMessage(reply, 'vodo');
+    await sendText(msg);
   }
 });
 

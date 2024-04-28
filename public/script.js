@@ -1,6 +1,7 @@
 const recordButton = document.getElementById('recordButton');
 const textInput = document.getElementById('textInput');
 const chatArea = document.getElementById('chatArea');
+const typingIndicator = document.getElementById('typingIndicator');
 const apiUrl = 'YOUR_API_URL';
 
 // Recording logic (you'll need a library like Recorder.js or similar)
@@ -30,18 +31,16 @@ textInput.addEventListener('keydown', async (event) => {
     const msg = textInput.value;
     textInput.value = '';
 
-    // Fetch and display server's response
-    /*
-    fetch(apiUrl, {
-      method: 'POST',
-      body: textInput.value
-    }).then(response => response.text())
-      .then(text => displayMessage(text, 'server'));
-    */
+    typingIndicator.style.display = null;
+    chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
+
     const response = await firebase.functions().httpsCallable('clientMsg')({
       sessionId,
       msg,
     })
+
+    typingIndicator.style.display = 'none';
+
     const reply = response.data.reply;
     console.log(response);
     displayMessage(reply, 'vodo');
@@ -64,6 +63,6 @@ function displayMessage(text, sender) {
   textElement.textContent = text;
   messageElement.appendChild(textElement);
 
-  chatArea.appendChild(messageElement);
+  chatArea.insertBefore(messageElement, typingIndicator);
   chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
 }

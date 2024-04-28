@@ -1,0 +1,18 @@
+.chat-area {
+  height: 300px; /* Adjust as needed */
+  overflow-y: scroll;
+  border: 1px solid #ccc;
+  padding: 10px;
+}
+
+.input-area {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+#recordButton {
+  margin-right: 10px;
+}
+
+/* Additional styles for messages, etc. */

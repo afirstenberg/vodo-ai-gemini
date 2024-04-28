@@ -2,7 +2,14 @@ import {z} from "zod";
 import {MyTool} from "./tools";
 import {logger} from "firebase-functions";
 
+export type DriveError = {
+  error: {
+    message: string;
+  }
+}
+
 export type DriveState = {
+  currentFile?: SpreadsheetInfo;
 }
 
 type DriveFileInfo = {
@@ -30,6 +37,17 @@ type SpreadsheetInfo = {
   currentRow: number;
 }
 
+type SpreadsheetCell = {
+  columnId: string;
+  metadata: SpreadsheetColumnInfo;
+  value: string | number | boolean;
+}
+
+type SpreadsheetRow = {
+  currentRow: number;
+  column: SpreadsheetCell[];
+}
+
 type GetFilesParams = {
   search?: string;
 };
@@ -46,10 +64,15 @@ type OpenFileResult = {
   info: SpreadsheetInfo;
 }
 
+type AddNewRowParams = {
+}
+
 export abstract class AbstractDriveTool {
 
+  currentFile?: SpreadsheetInfo;
+
   constructor(state: DriveState) {
-    // TODO: Implement state
+    this.currentFile = state.currentFile;
   }
 
   abstract getFiles(params: GetFilesParams): Promise<GetFilesResult>;
@@ -67,6 +90,12 @@ export abstract class AbstractDriveTool {
   })
 
   abstract openFile(params: OpenFileParams): Promise<OpenFileResult>;
+  async _openFile( params: OpenFileParams ): Promise<OpenFileResult> {
+    const ret: OpenFileResult = await this.openFile( params );
+    logger.debug("_openFile", ret);
+    this.currentFile = ret.info;
+    return ret;
+  }
   openFileDesc =
     `Open a file so you can read and write the data in it.
     Returns: Information about the file including information about the
@@ -80,22 +109,77 @@ export abstract class AbstractDriveTool {
     schema: z.object({
       id: z.string().describe("The id of the file we should work with. You can get the id of a file from the getFiles function.")
     }),
-    func: async (i:OpenFileParams) => this.openFile(i),
+    func: async (i:OpenFileParams) => this._openFile(i),
+  })
+
+  abstract addNewRow(params: AddNewRowParams): Promise<SpreadsheetRow | DriveError>;
+  async _addNewRow(params: AddNewRowParams): Promise<SpreadsheetRow | DriveError> {
+    const ret = await this.addNewRow(params);
+    if( this.currentFile && !((ret as DriveError).error) ){
+      this.currentFile.currentRow = (ret as SpreadsheetRow).currentRow;
+    }
+    return ret;
+  }
+  addNewRowDesc =
+    `Add another row to the spreadsheet, copying the formulas and formatting
+    from the previous row, but leaving all the fields that are writeable
+    empty. Set the current row to this new row.
+    Returns: The metadata and data about the row that has just been added.
+    `
+  addNewRowTool = new MyTool({
+    name: "addNewRow",
+    description: this.addNewRowDesc,
+    schema: z.object({}),
+    func: async (i: AddNewRowParams) => this._addNewRow(i),
   })
 
   getTools(): MyTool[] {
     return [
       this.getFilesTool,
       this.openFileTool,
+      this.addNewRowTool,
     ]
   }
 
   async getDriveState(): Promise<DriveState> {
-    return {};
+    const ret = this.currentFile
+      ? {currentFile: this.currentFile}
+      : {};
+    logger.debug("getDriveState", ret);
+    return ret;
   }
 }
 
 export class MockDriveTool extends AbstractDriveTool {
+
+  _fileDetails( id: string ) {
+    return id === 'mock-1'
+      ? {name: "weight", header: "weight"}
+      : {name: "height", header: "height"};
+  }
+
+  _columnInfo( headerName: string ): SpreadsheetColumnInfo[] {
+    return [
+      {
+        columnId: "A",
+        headerName: "Date",
+        isWriteable: false,
+        type: "datetime",
+      },
+      {
+        columnId: "B",
+        headerName: headerName,
+        isWriteable: true,
+        type: "number",
+      },
+      {
+        columnId: "C",
+        headerName: "change",
+        isWriteable: false,
+        type: "number",
+      }
+    ]
+  }
 
   async getFiles(params: GetFilesParams): Promise<GetFilesResult> {
     const files: DriveFileInfo[] = [
@@ -114,41 +198,57 @@ export class MockDriveTool extends AbstractDriveTool {
   }
 
   async openFile(params: OpenFileParams): Promise<OpenFileResult> {
-    const values = params.id === 'mock-1'
-      ? {name: "weight", header: "weight"}
-      : {name: "height", header: "height"};
+    const details = this._fileDetails( params.id );
     const info: SpreadsheetInfo = {
       id: params.id,
-      name: values.name,
+      name: details.name,
       description: "You are working on a spreadsheet.",
       sheetId: "sheet1",
       lastRow: 5,
       currentRow: 5,
-      column: [
-        {
-          columnId: "A",
-          headerName: "Date",
-          isWriteable: false,
-          type: "datetime",
-        },
-        {
-          columnId: "B",
-          headerName: values.header,
-          isWriteable: true,
-          type: "number",
-        },
-        {
-          columnId: "C",
-          headerName: "change",
-          isWriteable: false,
-          type: "number",
-        }
-      ],
+      column: this._columnInfo( details.header ),
     }
     return {
       info,
     }
   }
+
+  _fakeValue( valueType: SpreadsheetColumnType | undefined ): string | number | boolean {
+    switch( valueType ){
+      case "number":   return 10;
+      case "boolean":  return true;
+      case "datetime": return (new Date()).toISOString();
+    }
+    return "foobar";
+  }
+
+  async addNewRow(params: AddNewRowParams): Promise<SpreadsheetRow | DriveError> {
+    if( this.currentFile ){
+      const metadata = this.currentFile.column;
+      const column: SpreadsheetCell[] = metadata.map( colinfo => {
+        const value = colinfo.isWriteable
+          ? ""
+          : this._fakeValue( colinfo.type );
+        const cell: SpreadsheetCell = {
+          columnId: colinfo.columnId,
+          metadata: colinfo,
+          value,
+        }
+        return cell;
+      })
+      return {
+        currentRow: this.currentFile.lastRow + 1,
+        column
+      }
+    } else {
+      return({
+        error: {
+          message: "File not open."
+        }
+      })
+    }
+  }
+
 
 }
 
@@ -175,7 +275,27 @@ export class RemoteDriveTool extends AbstractDriveTool {
   }
 
   async openFile(params: OpenFileParams): Promise<OpenFileResult> {
-    return this._exec( "info", params );
+    const info: SpreadsheetInfo = await this._exec( "info", params );
+    return {
+      info,
+    }
+  }
+
+  async addNewRow(params: AddNewRowParams): Promise<SpreadsheetRow | DriveError> {
+    if( this.currentFile ){
+      return this._exec( "addRow", {
+        id: this.currentFile.id,
+        sheetName: this.currentFile.sheetId,
+        copyData: false,
+        ...params,
+      })
+    } else {
+      return({
+        error: {
+          message: "File not open."
+        }
+      })
+    }
   }
 
 }

@@ -44,14 +44,26 @@ textInput.addEventListener('keydown', async (event) => {
     })
     const reply = response.data.reply;
     console.log(response);
-    displayMessage(reply, 'server');
+    displayMessage(reply, 'vodo');
   }
 });
 
 function displayMessage(text, sender) {
   const messageElement = document.createElement('div');
-  messageElement.classList.add('message', sender); // Add 'user' or 'server' class
-  messageElement.textContent = text;
+  messageElement.classList.add('message', sender);
+
+  // Add icon element
+  const iconElement = document.createElement('div');
+  iconElement.classList.add('icon');
+  // Add your icon image or placeholder here
+  messageElement.appendChild(iconElement);
+
+  // Add text element
+  const textElement = document.createElement('div');
+  textElement.classList.add('text');
+  textElement.textContent = text;
+  messageElement.appendChild(textElement);
+
   chatArea.appendChild(messageElement);
   chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom
 }

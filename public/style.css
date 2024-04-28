@@ -3,6 +3,8 @@
   overflow-y: scroll;
   border: 1px solid #ccc;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
 }
 
 .input-area {
@@ -14,8 +16,6 @@
 #recordButton {
   margin-right: 10px;
 }
-
-/* ... (previous styles) ... */
 
 #recordButton {
   width: 100%; /* Make button take full width of column */
@@ -31,6 +31,50 @@
   #recordButton {
     height: 60px; /* Smaller on smaller screens */
   }
+}
+
+.message {
+  display: flex;
+  align-items: flex-start; /* Align items to the top */
+  margin-bottom: 10px;
+  width: fit-content;     /* Make bubble width adjust to content */
+}
+
+.message.user {
+  margin-left: auto; /* Push user messages to the right */
+  flex-direction: row-reverse; /* Reverse icon and text order */
+}
+
+.message .icon {
+  margin: 5px;
+  width: 40px;
+  height: 40px;
+
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
+}
+
+.message.user .icon {
+  background-image: url('img/user-avatar.png');
+}
+
+.message.vodo .icon {
+  background-image: url('img/vodo-avatar.png');
+}
+
+.message .text {
+  padding: 10px;
+  border-radius: 15px;
+  max-width: 70%;
+}
+
+.message.user .text {
+  background-color: #e0e0e0;
+}
+
+.message.vodo .text {
+  background-color: #f0f0f0;
 }
 
 /* Additional styles for messages, etc. */

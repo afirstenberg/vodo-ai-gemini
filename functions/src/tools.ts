@@ -17,10 +17,22 @@ export class MyTool extends DynamicStructuredTool {
       description: input.description,
       schema: input.schema,
       func: async (i) => {
-        const result = await input.func(i);
-        const ret = JSON.stringify(result);
-        logger.debug(`function call ${input.name}`, {i, result});
-        return ret;
+        try {
+          const result = await input.func(i);
+          const ret = JSON.stringify(result);
+          logger.debug(`function call ${input.name}`, {i, result});
+          return ret;
+
+        } catch( xx: any ){
+          const message = xx.message;
+          const error = {
+            error: {
+              message,
+            }
+          }
+          logger.error( `Problem calling tool function: ${message}`, error );
+          return JSON.stringify(error);
+        }
       }
     });
   }

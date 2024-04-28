@@ -1,6 +1,7 @@
 import {z} from "zod";
 import {MyTool} from "./tools";
 import {logger} from "firebase-functions";
+import {zodToGeminiParameters} from "@langchain/google-common";
 
 export type DriveError = {
   error: {
@@ -67,12 +68,72 @@ type OpenFileResult = {
 type AddNewRowParams = {
 }
 
+/*
+type SetDataParams = {
+  columnIdToValueSet: Record<string, any>
+}
+*/
+type SetDataParams = Record<string, any>
+
 export abstract class AbstractDriveTool {
 
-  currentFile?: SpreadsheetInfo;
+  _currentFile?: SpreadsheetInfo;
 
   constructor(state: DriveState) {
     this.currentFile = state.currentFile;
+  }
+
+  get currentFile(): SpreadsheetInfo | undefined {
+    return this._currentFile;
+  }
+
+  set currentFile( currentFile: SpreadsheetInfo | undefined ) {
+    this._currentFile = currentFile;
+
+    const writeableZodSchema = this._writeableZodSchema();
+    logger.debug( "writeableZodSchema", zodToGeminiParameters(writeableZodSchema) );
+    this.setDataTool.schema = writeableZodSchema;
+  }
+
+  _writeableZodSchema(): z.AnyZodObject {
+
+    function typeNameToZod( typeName: SpreadsheetColumnType ): z.ZodString | z.ZodNumber | z.ZodBoolean | z.ZodDate {
+      switch( typeName ){
+        case "datetime": return z.coerce.date();
+        case "number": return z.number();
+        case "boolean": return z.boolean();
+        case "string": return z.string();
+      }
+    }
+
+    if( this.currentFile ){
+      // Build the schema for setting values
+      let columnIdToValueSet: z.ZodObject<any> = z.object({});
+      const column = this.currentFile?.column ?? [];
+      column.forEach( col => {
+        const key = col.columnId;
+        const typeName = col.type;
+        const headerName = col.headerName;
+        if( col.isWriteable && typeName ){
+          const typeZod = typeNameToZod( typeName );
+          const desc = `Set the value for "${headerName}" to a ${typeName} value.`
+          columnIdToValueSet = columnIdToValueSet.extend({
+            [key]: typeZod.optional().describe( desc )
+          })
+          logger.debug( '_writeableZodSchema add', {key, headerName, typeName})
+        }
+      })
+
+      /*
+      const schema = z.object({
+        columnIdToValueSet,
+      })
+      */
+      const schema = columnIdToValueSet;
+      return schema;
+    } else {
+      return z.object({});
+    }
   }
 
   abstract getFiles(params: GetFilesParams): Promise<GetFilesResult>;
@@ -133,11 +194,26 @@ export abstract class AbstractDriveTool {
     func: async (i: AddNewRowParams) => this._addNewRow(i),
   })
 
+  abstract setData(params: SetDataParams): Promise<SpreadsheetRow | DriveError>;
+  setDataDesc =
+    `Set the values for specified columns on the current row. You should
+    specify the column, by columnId, you are setting and the value you are
+    setting it to.
+    Returns: The metadata and data about the row after all the data has been set.
+    `
+  setDataTool = new MyTool({
+    name: "setData",
+    description: this.setDataDesc,
+    schema: z.object({}),    // This is dynamic
+    func: async (i: SetDataParams) => this.setData(i),
+  })
+
   getTools(): MyTool[] {
     return [
       this.getFilesTool,
       this.openFileTool,
       this.addNewRowTool,
+      this.setDataTool,
     ]
   }
 
@@ -249,6 +325,9 @@ export class MockDriveTool extends AbstractDriveTool {
     }
   }
 
+  async setData(params: SetDataParams): Promise<SpreadsheetRow | DriveError> {
+    return this.addNewRow(params);
+  }
 
 }
 
@@ -262,6 +341,7 @@ export class RemoteDriveTool extends AbstractDriveTool {
 
   async _exec( command: string, params: any = {} ): Promise<any> {
     const url = `${this.url}?command=${command}`
+    logger.debug( "_exec", {command, params} );
     const response = await fetch( url, {
       method: "POST",
       body: JSON.stringify(params),
@@ -288,6 +368,24 @@ export class RemoteDriveTool extends AbstractDriveTool {
         sheetName: this.currentFile.sheetId,
         copyData: false,
         ...params,
+      })
+    } else {
+      return({
+        error: {
+          message: "File not open."
+        }
+      })
+    }
+  }
+
+  async setData(params: SetDataParams): Promise<SpreadsheetRow | DriveError> {
+    if( this.currentFile ){
+      return this._exec( "setData", {
+        id: this.currentFile.id,
+        sheetName: this.currentFile.sheetId,
+        row: this.currentFile.currentRow,
+        //...params,
+        columnIdToValueSet: params,
       })
     } else {
       return({

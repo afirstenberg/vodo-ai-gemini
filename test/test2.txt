@@ -1,0 +1,4 @@
+Open blood pressure
+Add a new record with a blood pressure of 120/70
+Change that to 115 over 70
+How would you evaluate that value?

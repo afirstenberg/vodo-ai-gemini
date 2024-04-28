@@ -15,4 +15,22 @@
   margin-right: 10px;
 }
 
+/* ... (previous styles) ... */
+
+#recordButton {
+  width: 100%; /* Make button take full width of column */
+  height: 80px;  /* Adjust as desired */
+  font-size: 2em; /* Larger font for icon */
+  display: flex; /* Center icon vertically & horizontally */
+  align-items: center;
+  justify-content: center;
+}
+
+/* Additional responsive styles (if needed) */
+@media (max-width: 768px) { /* Example for smaller screens */
+  #recordButton {
+    height: 60px; /* Smaller on smaller screens */
+  }
+}
+
 /* Additional styles for messages, etc. */

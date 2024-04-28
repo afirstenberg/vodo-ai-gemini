@@ -19,20 +19,32 @@ recordButton.addEventListener('click', async () => {
   displayMessage(text, 'server');
 });
 
-textInput.addEventListener('keydown', (event) => {
+const sessionId = `web-${Date.now().valueOf()}-${Math.random()}`;
+
+textInput.addEventListener('keydown', async (event) => {
   if (event.key === 'Enter' && textInput.value.trim() !== '') {
     // Send text message to server and display it
     displayMessage(textInput.value, 'user');
 
     // Clear input field
+    const msg = textInput.value;
     textInput.value = '';
 
     // Fetch and display server's response
+    /*
     fetch(apiUrl, {
       method: 'POST',
       body: textInput.value
     }).then(response => response.text())
       .then(text => displayMessage(text, 'server'));
+    */
+    const response = await firebase.functions().httpsCallable('clientMsg')({
+      sessionId,
+      msg,
+    })
+    const reply = response.data.reply;
+    console.log(response);
+    displayMessage(reply, 'server');
   }
 });
 

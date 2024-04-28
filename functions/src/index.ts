@@ -8,6 +8,7 @@
  */
 
 import {onRequest} from "firebase-functions/v2/https";
+import {onCall} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
 import {MemorySession} from "./session";
@@ -19,14 +20,44 @@ export const helloWorld = onRequest(async (request, response) => {
   response.send("Hello there!");
 });
 
-export const msg = onRequest( async (request, response) => {
-  const sessionHeader = "X-Session-Id";
-  const sessionId = request.header( sessionHeader ) || await sessionManager.newSessionId();
-  const msg = request.query.msg as string;
-  const session = await sessionManager.loadSession( sessionId );
+type MsgParams = {
+  sessionId?: string;
+  msg: string;
+}
+
+type MsgResponse = {
+  sessionId: string;
+  reply: string;
+}
+
+async function handleMsg({sessionId, msg}: MsgParams): Promise<MsgResponse> {
+  const id = sessionId || await sessionManager.newSessionId();
+  const session = await sessionManager.loadSession( id );
   const reply = await session.msg( msg );
   await sessionManager.saveSession( session );
+  const response = {
+    sessionId: session.sessionId,
+    reply,
+  }
+  return response;
+}
+
+export const msg = onRequest( async (request, response) => {
+  const sessionHeader = "X-Session-Id";
+  const sessionId = request.header( sessionHeader );
+  const msg = request.query.msg as string;
+
+  const result = await handleMsg({
+    sessionId,
+    msg
+  })
+
   response
-    .set( sessionHeader, session.sessionId )
-    .send( reply );
+    .set( sessionHeader, result.sessionId )
+    .send( result.reply );
+})
+
+export const clientMsg = onCall( async (request) => {
+  const result = await handleMsg( request.data );
+  return result;
 })

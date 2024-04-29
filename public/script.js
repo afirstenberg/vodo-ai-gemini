@@ -79,6 +79,7 @@ recordButton.addEventListener('click', async () => {
         const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
         recordedChunks = []; // Reset chunks
         await sendAudio(audioBlob);
+        textInput.focus();
       };
 
       mediaRecorder.start();
@@ -144,6 +145,7 @@ function displayMessage(text, sender, opts) {
     )
     audioIcon.onclick = () => {
       audio.play();
+      textInput.focus();
     }
   }
 

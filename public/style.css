@@ -1,0 +1,139 @@
+.chat-area {
+  height: 300px; /* Adjust as needed */
+  overflow-y: scroll;
+  border: 1px solid #ccc;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+.input-area {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+}
+
+#recordButton {
+  margin-top: 2em;
+  margin-right: 10px;
+  width: 100%;
+  height: 80px;
+  font-size: 2em;
+  display: flex; /* Center icon vertically & horizontally */
+  align-items: center;
+  justify-content: center;
+}
+
+#recordButton.recording .fa-microphone {
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(1); /* Start at normal size */
+    opacity: 1; /* Fully opaque */
+  }
+  50% {
+    transform: scale(1.2); /* Scale up to 120% */
+    opacity: 0.5; /* Partially transparent */
+  }
+  100% {
+    transform: scale(1); /* Back to normal size */
+    opacity: 1; /* Fully opaque again */
+  }
+}
+
+#recordButton .fa-question {
+  color: orange;
+}
+
+#recordButton .fa-ban {
+  color: red;
+}
+
+#recordButton .hide {
+  display: none;
+}
+
+@media (max-width: 768px) { /* Example for smaller screens */
+  #recordButton {
+    height: 60px; /* Smaller on smaller screens */
+  }
+}
+
+.message {
+  display: flex;
+  align-items: flex-start; /* Align items to the top */
+  margin-bottom: 10px;
+  width: fit-content;     /* Make bubble width adjust to content */
+}
+
+.message.user {
+  margin-left: auto; /* Push user messages to the right */
+  flex-direction: row-reverse; /* Reverse icon and text order */
+}
+
+.message .icon {
+  margin: 5px;
+  width: 40px;
+  height: 40px;
+
+  background-size: cover;
+  background-position: center;
+  border-radius: 50%;
+}
+
+.message.user .icon {
+  background-image: url('img/user-avatar.png');
+}
+
+.message.vodo .icon {
+  background-image: url('img/vodo-avatar.png');
+}
+
+.message .text {
+  padding: 10px;
+  border-radius: 15px;
+  max-width: 70%;
+}
+
+.message .etc {
+  padding: 10px;
+  max-width: 3em;
+}
+
+.message.user .text {
+  background-color: #e0e0e0;
+}
+
+.message.vodo .text {
+  background-color: #f0f0f0;
+}
+
+#typingIndicator {
+  width: auto;
+}
+
+.typing-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: #ccc;
+  margin-right: 5px;
+  opacity: 0; /* Start with all dots invisible */
+  animation: typing 1.5s infinite;
+}
+
+#typingIndicator .typing-dot:nth-child(2) { /* Second dot */
+  animation-delay: 0.5s;
+}
+
+#typingIndicator .typing-dot:nth-child(3) { /* Third dot */
+  animation-delay: 1s;
+}
+
+@keyframes typing {
+  0% { opacity: 0; }
+  50% { opacity: 1; }
+  100% { opacity: 0; }
+}

@@ -59,7 +59,9 @@ async function sendAudio(audioBlob){
   displayMessage(msg, 'user');
 
   const reply = response.data.reply;
-  displayMessage(reply, 'vodo');
+  displayMessage(reply, 'vodo', {
+    replyAudio: response.data.replyAudio
+  });
 }
 
 recordButton.addEventListener('click', async () => {
@@ -103,14 +105,23 @@ textInput.addEventListener('keydown', async (event) => {
   }
 });
 
-function displayMessage(text, sender) {
+function addHtml(element, html){
+  const parser = new DOMParser();
+  const doc = parser.parseFromString( html, "text/html" );
+  const newElement = doc.body.firstChild;
+  element.appendChild( newElement );
+  return newElement;
+}
+
+function displayMessage(text, sender, opts) {
+  const options = opts ?? {};
+
   const messageElement = document.createElement('div');
   messageElement.classList.add('message', sender);
 
   // Add icon element
   const iconElement = document.createElement('div');
   iconElement.classList.add('icon');
-  // Add your icon image or placeholder here
   messageElement.appendChild(iconElement);
 
   // Add text element
@@ -118,6 +129,23 @@ function displayMessage(text, sender) {
   textElement.classList.add('text');
   textElement.textContent = text;
   messageElement.appendChild(textElement);
+
+  const etcElement = document.createElement('div');
+  etcElement.classList.add('etc');
+  messageElement.appendChild(etcElement);
+
+  if( options.replyAudio ){
+    const audio = new Audio(`data:audio/mp3;base64,${opts.replyAudio}`);
+    etcElement.appendChild(audio);
+    audio.play();
+    const audioIcon = addHtml(
+      etcElement,
+      '<i class="fa-solid fa-volume-high"></i>'
+    )
+    audioIcon.onclick = () => {
+      audio.play();
+    }
+  }
 
   chatArea.insertBefore(messageElement, typingIndicator);
   chatArea.scrollTop = chatArea.scrollHeight; // Scroll to bottom

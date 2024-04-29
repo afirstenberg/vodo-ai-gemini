@@ -13,6 +13,7 @@ import * as logger from "firebase-functions/logger";
 
 import {MemorySession} from "./session";
 import {transcribe} from "./stt";
+import {makeAudio} from "./tts";
 
 const sessionManager = new MemorySession();
 
@@ -71,9 +72,12 @@ export const clientAudio = onCall( async (request) => {
     sessionId: request.data.sessionId,
     msg,
   })
+  const reply = result.reply;
+  const replyAudio = await makeAudio( reply );
   return {
     sessionId: result.sessionId,
     msg,
-    reply: result.reply,
+    reply,
+    replyAudio,
   }
 })

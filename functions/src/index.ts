@@ -12,6 +12,7 @@ import {onCall} from "firebase-functions/v2/https";
 import * as logger from "firebase-functions/logger";
 
 import {MemorySession} from "./session";
+import {transcribe} from "./stt";
 
 const sessionManager = new MemorySession();
 
@@ -65,9 +66,14 @@ export const clientMsg = onCall( async (request) => {
 export const clientAudio = onCall( async (request) => {
   const audio64 = request.data.audio64;
 
-  return {
+  const msg = await transcribe( audio64 );
+  const result = await handleMsg({
     sessionId: request.data.sessionId,
-    msg: `received ${audio64.length}`,
-    reply: "lorum ipsum",
+    msg,
+  })
+  return {
+    sessionId: result.sessionId,
+    msg,
+    reply: result.reply,
   }
 })

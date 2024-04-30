@@ -14,6 +14,7 @@ import * as logger from "firebase-functions/logger";
 import {MemorySession} from "./session";
 import {transcribe} from "./stt";
 import {makeAudio} from "./tts";
+import {ChatSession} from "./chat";
 
 const sessionManager = new MemorySession();
 
@@ -30,6 +31,10 @@ type MsgParams = {
 type MsgResponse = {
   sessionId: string;
   reply: string;
+  currentFile?: {
+    id: string;
+    name: string;
+  }
 }
 
 async function handleMsg({sessionId, msg}: MsgParams): Promise<MsgResponse> {
@@ -37,9 +42,15 @@ async function handleMsg({sessionId, msg}: MsgParams): Promise<MsgResponse> {
   const session = await sessionManager.loadSession( id );
   const reply = await session.msg( msg );
   await sessionManager.saveSession( session );
-  const response = {
-    sessionId: session.sessionId,
+  const response: MsgResponse = {
+    sessionId,
     reply,
+  }
+  if( session?.drive?.currentFile ){
+    response.currentFile = {
+      id: session?.drive?.currentFile?.id,
+      name: session?.drive?.currentFile?.name,
+    }
   }
   return response;
 }
@@ -75,9 +86,8 @@ export const clientAudio = onCall( async (request) => {
   const reply = result.reply;
   const replyAudio = await makeAudio( reply );
   return {
-    sessionId: result.sessionId,
+    ...result,
     msg,
-    reply,
     replyAudio,
   }
 })

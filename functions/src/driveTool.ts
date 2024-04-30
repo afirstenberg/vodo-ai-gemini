@@ -1,5 +1,5 @@
 import {z} from "zod";
-import {MyTool} from "./tools";
+import {MyTool, MyToolInput} from "./tools";
 import {logger} from "firebase-functions";
 import {zodToGeminiParameters} from "@langchain/google-common";
 
@@ -69,6 +69,11 @@ type SetDataParams = {
 */
 type SetDataParams = Record<string, any>
 
+type GetDataParams = {
+}
+
+type WhatIfParams = Record<string,any>
+
 export abstract class AbstractDriveTool {
 
   _currentFile?: SpreadsheetInfo;
@@ -87,6 +92,7 @@ export abstract class AbstractDriveTool {
     const writeableZodSchema = this._writeableZodSchema();
     logger.debug( "writeableZodSchema", zodToGeminiParameters(writeableZodSchema) );
     this.setDataTool.schema = writeableZodSchema;
+    this.whatIfTool.schema = writeableZodSchema;
   }
 
   assertCurrentFile(): SpreadsheetInfo {
@@ -157,6 +163,9 @@ export abstract class AbstractDriveTool {
     const ret: OpenFileResult = await this.openFile( params );
     logger.debug("_openFile", ret);
     this.currentFile = ret.info;
+    if( this.currentFile ){
+      this.currentFile.currentRow = this.currentFile.lastRow;
+    }
     return ret;
   }
   openFileDesc =
@@ -177,9 +186,11 @@ export abstract class AbstractDriveTool {
 
   abstract addNewRow(params: AddNewRowParams): Promise<SpreadsheetRow>;
   async _addNewRow(params: AddNewRowParams): Promise<SpreadsheetRow> {
+    // TODO: Refactor to remove code duplication
     const ret = await this.addNewRow(params);
     if( this.currentFile ){
       this.currentFile.currentRow = ret.currentRow;
+      this.currentFile.lastRow = ret.currentRow;
     }
     return ret;
   }
@@ -187,6 +198,8 @@ export abstract class AbstractDriveTool {
     `Add another row to the spreadsheet, copying the formulas and formatting
     from the previous row, but leaving all the fields that are writeable
     empty. Set the current row to this new row.
+    This lets you create a new row where the user can add all the necessary
+    data and then request the conclusions afterwards.
     Returns: The metadata and data about the row that has just been added.
     `
   addNewRowTool = new MyTool({
@@ -197,17 +210,71 @@ export abstract class AbstractDriveTool {
   })
 
   abstract setData(params: SetDataParams): Promise<SpreadsheetRow>;
+  async _setData(params: SetDataParams): Promise<SpreadsheetRow> {
+    // TODO: Refactor to remove code duplication
+    const ret = await this.setData(params);
+    if( this.currentFile ){
+      this.currentFile.currentRow = ret.currentRow;
+    }
+    return ret;
+  }
   setDataDesc =
-    `Set the values for specified columns on the current row. You should
-    specify the column, by columnId, you are setting and the value you are
-    setting it to.
+    `Set the values for specified columns on the current row.
+    You should specify the column, by columnId, you are setting and the 
+    value you are setting it to.
     Returns: The metadata and data about the row after all the data has been set.
     `
   setDataTool = new MyTool({
     name: "setData",
     description: this.setDataDesc,
     schema: z.object({}),    // This is dynamic
-    func: async (i: SetDataParams) => this.setData(i),
+    func: async (i: SetDataParams) => this._setData(i),
+  })
+
+  abstract getData(params: GetDataParams): Promise<SpreadsheetRow>;
+  async _getData(params: GetDataParams): Promise<SpreadsheetRow> {
+    // TODO: Refactor to remove code duplication
+    const ret = await this.getData(params);
+    if( this.currentFile ){
+      this.currentFile.currentRow = ret.currentRow;
+    }
+    return ret;
+  }
+  getDataDesc =
+    `Get all of the values for the current row.
+    Returns: The metadata and data about the current row.
+    `
+  getDataTool = new MyTool({
+    name: "getData",
+    description: this.getDataDesc,
+    schema: z.object({}),
+    func: async (i: GetDataParams) => this._getData(i),
+  })
+
+  abstract whatIf(params: WhatIfParams): Promise<SpreadsheetRow>;
+  async _whatIf(params: WhatIfParams): Promise<SpreadsheetRow> {
+    // TODO: Refactor to remove code duplication
+    const ret = await this.whatIf(params);
+    if( this.currentFile ){
+      this.currentFile.currentRow = ret.currentRow;
+    }
+    return ret;
+  }
+  whatIfDesc =
+    `Add another row to the sheet, copying all the formulas, values, and
+    formatting to the new row, then set the values for the specified
+    column on this new row.
+    You should specify the column, by columnId, you are setting and the 
+    value you are setting it to.
+    This lets you do "what if" scenarios where the user can see what the
+    results of making a change would be.
+    Returns: The metadata and data about the row after all the data has been set.
+    `
+  whatIfTool = new MyTool({
+    name: "whatIf",
+    description: this.whatIfDesc,
+    schema: z.object({}),    // This is dynamic,
+    func: async (i: WhatIfParams) => this._whatIf(i),
   })
 
   getTools(): MyTool[] {
@@ -216,6 +283,8 @@ export abstract class AbstractDriveTool {
       this.openFileTool,
       this.addNewRowTool,
       this.setDataTool,
+      this.getDataTool,
+      this.whatIfTool,
     ]
   }
 
@@ -321,6 +390,17 @@ export class MockDriveTool extends AbstractDriveTool {
   }
 
   async setData(params: SetDataParams): Promise<SpreadsheetRow> {
+    // TODO: Better mock
+    return this.addNewRow(params);
+  }
+
+  async getData(params: GetDataParams): Promise<SpreadsheetRow> {
+    // TODO: Better mock
+    return this.addNewRow(params);
+  }
+
+  whatIf(params: WhatIfParams): Promise<SpreadsheetRow> {
+    // TODO: Better mock
     return this.addNewRow(params);
   }
 
@@ -369,6 +449,26 @@ export class RemoteDriveTool extends AbstractDriveTool {
   async setData(params: SetDataParams): Promise<SpreadsheetRow> {
     const currentFile = this.assertCurrentFile();
     return this._exec( "setData", {
+      id: currentFile.id,
+      sheetName: currentFile.sheetId,
+      row: currentFile.currentRow,
+      //...params,
+      columnIdToValueSet: params,
+    })
+  }
+
+  async getData(params: GetDataParams): Promise<SpreadsheetRow> {
+    const currentFile = this.assertCurrentFile();
+    return this._exec( "getData", {
+      id: currentFile.id,
+      sheetName: currentFile.sheetId,
+      row: currentFile.currentRow,
+    })
+  }
+
+  whatIf(params: WhatIfParams): Promise<SpreadsheetRow> {
+    const currentFile = this.assertCurrentFile();
+    return this._exec( "whatIf", {
       id: currentFile.id,
       sheetName: currentFile.sheetId,
       row: currentFile.currentRow,

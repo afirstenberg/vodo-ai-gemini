@@ -7,6 +7,7 @@ import {ChainValues} from "@langchain/core/dist/utils/types";
 import {MemTool} from "./memTool";
 import {AbstractDriveTool} from "./driveTool";
 import * as logger from "firebase-functions/logger";
+import {readFileSync} from "fs";
 
 export type ChatSessionInput = {
   sessionId: string;
@@ -56,18 +57,8 @@ export class ChatSession {
 
     const driveDescription = this.drive.currentFile?.description ?? "";
 
-    const systemPrompt = `
-      You are a helpful assistant that knows how to use tools.
-      Your responses should be suitable for reading over the phone. 
-      It is very important to use tools to answer the question or follow the instructions
-      rather than coming up with your own answer. Tool calls are good.
-      If there is a vague reference to a name, consider the last name mentioned,
-      but don't forget to use a tool to process it.
-      When sending a message to the user, you should refer to the spreadsheet
-      and columns in the spreadsheet by name or title. But when making tool calls,
-      you should use the appropriate id.
-      ${driveDescription}
-    `;
+    const systemPromptPath: string = "./templates/systemPrompt.txt"
+    const systemPrompt: string = readFileSync(systemPromptPath, "utf8")
     const prompt = ChatPromptTemplate.fromMessages([
       ["system", systemPrompt],
       ["placeholder", "{chat_history}"],
@@ -96,6 +87,7 @@ export class ChatSession {
 
     const result= await agentWithHistory.invoke({
       input,
+      driveDescription,
     },{
       configurable: {
         sessionId: this.sessionId,

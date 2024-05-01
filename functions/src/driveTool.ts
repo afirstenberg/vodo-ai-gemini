@@ -1,5 +1,5 @@
 import {z} from "zod";
-import {MyTool, MyToolInput} from "./tools";
+import {MyTool} from "./tools";
 import {logger} from "firebase-functions";
 import {zodToGeminiParameters} from "@langchain/google-common";
 

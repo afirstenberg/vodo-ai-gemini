@@ -14,14 +14,8 @@ import * as logger from "firebase-functions/logger";
 import {MemorySession} from "./session";
 import {transcribe} from "./stt";
 import {makeAudio} from "./tts";
-import {ChatSession} from "./chat";
 
 const sessionManager = new MemorySession();
-
-export const helloWorld = onRequest(async (request, response) => {
-  logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello there!");
-});
 
 type MsgParams = {
   sessionId?: string;
@@ -39,11 +33,12 @@ type MsgResponse = {
 
 async function handleMsg({sessionId, msg}: MsgParams): Promise<MsgResponse> {
   const id = sessionId || await sessionManager.newSessionId();
+  logger.info("handleMsg start", {id, sessionId, msg});
   const session = await sessionManager.loadSession( id );
   const reply = await session.msg( msg );
   await sessionManager.saveSession( session );
   const response: MsgResponse = {
-    sessionId,
+    sessionId: id,
     reply,
   }
   if( session?.drive?.currentFile ){
@@ -52,6 +47,7 @@ async function handleMsg({sessionId, msg}: MsgParams): Promise<MsgResponse> {
       name: session?.drive?.currentFile?.name,
     }
   }
+  logger.info("handleMsg end", response);
   return response;
 }
 

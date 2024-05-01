@@ -11,6 +11,9 @@ const sessionId = `web-${Date.now().valueOf()}-${Math.random()}`;
 let mediaRecorder;
 let recordedChunks = [];
 
+const recordStart = new Audio("audio/beep-start.mp3");
+const recordStop = new Audio("audio/beep-stop.mp3");
+
 async function blobToBase64(blob) {
   return new Promise((resolve, _) => {
     const reader = new FileReader();
@@ -77,6 +80,7 @@ recordButton.addEventListener('click', async () => {
       mediaRecorder.ondataavailable = event => recordedChunks.push(event.data);
       mediaRecorder.onstop = async () => {
         console.log('media on stop');
+        recordStop.play().then();
         recordButton.classList.remove('recording');
         const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
         recordedChunks = []; // Reset chunks
@@ -84,6 +88,7 @@ recordButton.addEventListener('click', async () => {
         textInput.focus();
       };
 
+      await recordStart.play();
       mediaRecorder.start();
       recordButton.classList.add('recording');
 

@@ -101,6 +101,14 @@
   max-width: 3em;
 }
 
+.message .etc i {
+  cursor: pointer;
+}
+
+.message .etc img {
+  width: 1em;
+}
+
 .message.user .text {
   background-color: #e0e0e0;
 }

@@ -17,11 +17,6 @@ import {makeAudio} from "./tts";
 
 const sessionManager = new MemorySession();
 
-export const helloWorld = onRequest(async (request, response) => {
-  logger.info("Hello logs!", {structuredData: true});
-  response.send("Hello there!");
-});
-
 type MsgParams = {
   sessionId?: string;
   msg: string;
@@ -30,17 +25,29 @@ type MsgParams = {
 type MsgResponse = {
   sessionId: string;
   reply: string;
+  currentFile?: {
+    id: string;
+    name: string;
+  }
 }
 
 async function handleMsg({sessionId, msg}: MsgParams): Promise<MsgResponse> {
   const id = sessionId || await sessionManager.newSessionId();
+  logger.info("handleMsg start", {id, sessionId, msg});
   const session = await sessionManager.loadSession( id );
   const reply = await session.msg( msg );
   await sessionManager.saveSession( session );
-  const response = {
-    sessionId: session.sessionId,
+  const response: MsgResponse = {
+    sessionId: id,
     reply,
   }
+  if( session?.drive?.currentFile ){
+    response.currentFile = {
+      id: session?.drive?.currentFile?.id,
+      name: session?.drive?.currentFile?.name,
+    }
+  }
+  logger.info("handleMsg end", response);
   return response;
 }
 
@@ -75,9 +82,8 @@ export const clientAudio = onCall( async (request) => {
   const reply = result.reply;
   const replyAudio = await makeAudio( reply );
   return {
-    sessionId: result.sessionId,
+    ...result,
     msg,
-    reply,
     replyAudio,
   }
 })

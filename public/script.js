@@ -11,6 +11,9 @@ const sessionId = `web-${Date.now().valueOf()}-${Math.random()}`;
 let mediaRecorder;
 let recordedChunks = [];
 
+const recordStart = new Audio("audio/beep-start.mp3");
+const recordStop = new Audio("audio/beep-stop.mp3");
+
 async function blobToBase64(blob) {
   return new Promise((resolve, _) => {
     const reader = new FileReader();
@@ -38,7 +41,9 @@ async function sendText(msg){
   typingIndicator.style.display = 'none';
 
   const reply = response.data.reply;
-  displayMessage(reply, 'vodo');
+  displayMessage(reply, 'vodo', {
+    currentFile: response.data.currentFile,
+  });
 }
 
 async function sendAudio(audioBlob){
@@ -56,12 +61,12 @@ async function sendAudio(audioBlob){
   typingIndicator.style.display = 'none';
 
   const msg = response.data.msg;
-  displayMessage(msg, 'user');
+  displayMessage(msg, 'user', {
+    msgAudio: audio64,
+  });
 
   const reply = response.data.reply;
-  displayMessage(reply, 'vodo', {
-    replyAudio: response.data.replyAudio
-  });
+  displayMessage(reply, 'vodo', response.data);
 }
 
 recordButton.addEventListener('click', async () => {
@@ -75,6 +80,7 @@ recordButton.addEventListener('click', async () => {
       mediaRecorder.ondataavailable = event => recordedChunks.push(event.data);
       mediaRecorder.onstop = async () => {
         console.log('media on stop');
+        recordStop.play().then();
         recordButton.classList.remove('recording');
         const audioBlob = new Blob(recordedChunks, { type: 'audio/webm' });
         recordedChunks = []; // Reset chunks
@@ -82,6 +88,7 @@ recordButton.addEventListener('click', async () => {
         textInput.focus();
       };
 
+      await recordStart.play();
       mediaRecorder.start();
       recordButton.classList.add('recording');
 
@@ -114,6 +121,22 @@ function addHtml(element, html){
   return newElement;
 }
 
+function addAudio(element, audioHtml, audio64, autoplay) {
+  if( audio64 ){
+    const audio = new Audio(`data:audio/mp3;base64,${audio64}`);
+    element.appendChild(audio);
+    autoplay && audio.play();
+    const audioIcon = addHtml(
+      element,
+      audioHtml,
+    )
+    audioIcon.onclick = () => {
+      audio.play();
+      textInput.focus();
+    }
+  }
+}
+
 function displayMessage(text, sender, opts) {
   const options = opts ?? {};
 
@@ -135,18 +158,30 @@ function displayMessage(text, sender, opts) {
   etcElement.classList.add('etc');
   messageElement.appendChild(etcElement);
 
-  if( options.replyAudio ){
-    const audio = new Audio(`data:audio/mp3;base64,${opts.replyAudio}`);
-    etcElement.appendChild(audio);
-    audio.play();
-    const audioIcon = addHtml(
+  addAudio(
+    etcElement,
+    '<i class="fa-solid fa-head-side-cough fa-flip-horizontal"></i>',
+    options?.msgAudio,
+    false,
+  )
+  addAudio(
+    etcElement,
+    '<i class="fa-solid fa-volume-high"></i>',
+    options?.replyAudio,
+    true,
+  )
+
+  if( options?.currentFile ){
+    const {id,name} = options.currentFile;
+    const fileUrl=`https://docs.google.com/spreadsheets/d/${id}/edit`
+    const fileElementHtml =
+      `<a href="${fileUrl}" target="${name}" class="fileLink" >
+         <img src="img/google-sheets-icon.svg" alt="Google Sheet" />
+       </a>`
+    addHtml(
       etcElement,
-      '<i class="fa-solid fa-volume-high"></i>'
+      fileElementHtml,
     )
-    audioIcon.onclick = () => {
-      audio.play();
-      textInput.focus();
-    }
   }
 
   chatArea.insertBefore(messageElement, typingIndicator);

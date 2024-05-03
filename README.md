@@ -64,7 +64,7 @@ In the examples above, you can see that sometimes columns were referenced in the
 
 Similarly, Gemini's training allows common phrases to be mapped to one or more correct columns. So if the column is actually called "interest rate", a phrase "mortgage rate" would still work. Even more exciting is that the phrase "100 / 62" is a common way to express the two values for blood pressure, and Gemini can set it by those column names specifically.
 
-## How we built it
+## How I built it
 
 The system is split into several components:
 * A front-end written in "plain" modern HTML / CSS / JavaScript
